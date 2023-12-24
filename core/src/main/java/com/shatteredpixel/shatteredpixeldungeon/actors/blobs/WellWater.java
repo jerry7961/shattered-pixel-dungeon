@@ -36,32 +36,47 @@ public abstract class WellWater extends Blob {
 
 	@Override
 	protected void evolve() {
-		int cell;
-		boolean seen = false;
-		for (int i=area.top-1; i <= area.bottom; i++) {
-			for (int j = area.left-1; j <= area.right; j++) {
-				cell = j + i* Dungeon.level.width();
-				if (Dungeon.level.insideMap(cell)) {
-					off[cell] = cur[cell];
-					volume += off[cell];
-					if (off[cell] > 0 && Dungeon.level.visited[cell]) {
-						seen = true;
-					}
-				}
-			}
-		}
+		manageNotes(processAreaAndCheckCells());
+	}
+
+	private void manageNotes(boolean seen) {
 		if (seen){
 			Notes.add(record());
 		} else {
 			Notes.remove(record());
 		}
 	}
-	
+
+	private boolean processAreaAndCheckCells() {
+		int cell;
+		for (int i=area.top-1; i <= area.bottom; i++) {
+			for (int j = area.left-1; j <= area.right; j++) {
+				cell = j + i* Dungeon.level.width();
+				if (Dungeon.level.insideMap(cell)) {
+					processCell(cell);
+					if (shouldMarkAsSeen(cell)) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	private boolean shouldMarkAsSeen(int cell) {
+		return off[cell] > 0 && Dungeon.level.visited[cell];
+	}
+
+	private void processCell(int cell) {
+		off[cell] = cur[cell];
+		volume += off[cell];
+	}
+
 	protected boolean affect( int pos ) {
 		
 		Heap heap;
 		
-		if (pos == Dungeon.hero.pos && affectHero( Dungeon.hero )) {
+		if (heroAffected(pos)) {
 			
 			cur[pos] = 0;
 			return true;
@@ -70,44 +85,67 @@ public abstract class WellWater extends Blob {
 			
 			Item oldItem = heap.peek();
 			Item newItem = affectItem( oldItem, pos );
-			
+
 			if (newItem != null) {
-				
+
 				if (newItem == oldItem) {
 
 				} else if (oldItem.quantity() > 1) {
 
-					oldItem.quantity( oldItem.quantity() - 1 );
-					heap.drop( newItem );
-					
+					handleMultipleQuantity(oldItem, heap, newItem);
+
 				} else {
-					heap.replace( oldItem, newItem );
+					handleSingleQuantity(heap, oldItem, newItem);
 				}
-				
+
 				heap.sprite.link();
 				cur[pos] = 0;
-				
+
 				return true;
-				
+
 			} else {
-				
-				int newPlace;
-				do {
-					newPlace = pos + PathFinder.NEIGHBOURS8[Random.Int( 8 )];
-				} while (!Dungeon.level.passable[newPlace] && !Dungeon.level.avoid[newPlace]);
-				Dungeon.level.drop( heap.pickUp(), newPlace ).sprite.drop( pos );
-				
+
+				relocateItem(pos, heap);
 				return false;
-				
+
 			}
-			
+
 		} else {
 			
 			return false;
 			
 		}
 	}
-	
+
+	private void relocateItem(int pos, Heap heap) {
+		int newPlace;
+		do {
+			newPlace = findRandomAdjacentPosition(pos);
+		} while (!isPassableAndNotAvoided(newPlace));
+		Dungeon.level.drop( heap.pickUp(), newPlace ).sprite.drop(pos);
+	}
+
+	private boolean isPassableAndNotAvoided(int newPlace) {
+		return Dungeon.level.passable[newPlace] && !Dungeon.level.avoid[newPlace];
+	}
+
+	private int findRandomAdjacentPosition(int pos) {
+		return pos + PathFinder.NEIGHBOURS8[Random.Int(8)];
+	}
+
+	private void handleSingleQuantity(Heap heap, Item oldItem, Item newItem) {
+		heap.replace(oldItem, newItem);
+	}
+
+	private void handleMultipleQuantity(Item oldItem, Heap heap, Item newItem) {
+		oldItem.quantity( oldItem.quantity() - 1 );
+		heap.drop(newItem);
+	}
+
+	private boolean heroAffected(int pos) {
+		return pos == Dungeon.hero.pos && affectHero(Dungeon.hero);
+	}
+
 	protected abstract boolean affectHero( Hero hero );
 	
 	protected abstract Item affectItem( Item item, int pos );
