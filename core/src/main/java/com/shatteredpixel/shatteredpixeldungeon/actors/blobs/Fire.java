@@ -50,52 +50,61 @@ public class Fire extends Blob {
 			for (int j = area.top-1; j <= area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
 				if (cur[cell] > 0) {
-					
-					if (freeze != null && freeze.volume > 0 && freeze.cur[cell] > 0){
-						freeze.clear(cell);
-						off[cell] = cur[cell] = 0;
+					if (FireFreezeInteraction(freeze, cell))
 						continue;
-					}
-
 					burn( cell );
-
 					fire = cur[cell] - 1;
-					if (fire <= 0 && flamable[cell]) {
-
-						Dungeon.level.destroy( cell );
-
-						observe = true;
-						GameScene.updateMap( cell );
-
-					}
-
-				} else if (freeze == null || freeze.volume <= 0 || freeze.cur[cell] <= 0) {
-
-					if (flamable[cell]
-							&& (cur[cell-1] > 0
-							|| cur[cell+1] > 0
-							|| cur[cell-Dungeon.level.width()] > 0
-							|| cur[cell+Dungeon.level.width()] > 0)) {
-						fire = 4;
-						burn( cell );
-						area.union(i, j);
-					} else {
-						fire = 0;
-					}
-
+					if (isFireExtinguished(fire, flamable[cell]))
+						observe = handleFireExtinguished(cell);
+				} else if (flamable[cell] && noFreeze(freeze, cell) && hasBurningNeighbor(flamable, cell)) {
+					fire = getFireFromNeighbor(cell, i, j);
 				} else {
 					fire = 0;
 				}
-
 				volume += (off[cell] = fire);
 			}
 		}
-
-		if (observe) {
-			Dungeon.observe();
-		}
+		if (observe) Dungeon.observe();
 	}
-	
+
+	private int getFireFromNeighbor(int cell, int i, int j) {
+		int fire;
+		fire = 4;
+		burn(cell);
+		area.union(i, j);
+		return fire;
+	}
+
+	private boolean isFireExtinguished(int fire, boolean flamable) {
+		return fire <= 0 && flamable;
+	}
+
+	private boolean noFreeze(Freezing freeze, int cell) {
+		return freeze == null || freeze.volume <= 0 || freeze.cur[cell] <= 0;
+	}
+
+	private boolean hasBurningNeighbor(boolean[] flamable, int cell) {
+		return  (cur[cell - 1] > 0
+				|| cur[cell + 1] > 0
+				|| cur[cell - Dungeon.level.width()] > 0
+				|| cur[cell + Dungeon.level.width()] > 0);
+	}
+
+	private boolean handleFireExtinguished(int cell) {
+		Dungeon.level.destroy(cell);
+		GameScene.updateMap(cell);
+		return true;
+	}
+
+	private boolean FireFreezeInteraction(Freezing freeze, int cell) {
+		if (freeze != null && freeze.volume > 0 && freeze.cur[cell] > 0){
+			freeze.clear(cell);
+			off[cell] = cur[cell] = 0;
+			return true;
+		}
+		return false;
+	}
+
 	public static void burn( int pos ) {
 		Char ch = Actor.findChar( pos );
 		if (ch != null && !ch.isImmune(Fire.class)) {
