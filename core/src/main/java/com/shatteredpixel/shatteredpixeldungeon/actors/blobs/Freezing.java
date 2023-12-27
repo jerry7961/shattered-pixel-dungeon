@@ -35,27 +35,27 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.MagicalFire
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 
 public class Freezing extends Blob {
-	
+
 	@Override
 	protected void evolve() {
-		
+
 		int cell;
-		
+
 		Fire fire = (Fire)Dungeon.level.blobs.get( Fire.class );
-		
+
 		for (int i = area.left-1; i <= area.right; i++) {
 			for (int j = area.top-1; j <= area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
 				if (cur[cell] > 0) {
-					
+
 					if (fire != null && fire.volume > 0 && fire.cur[cell] > 0){
 						fire.clear(cell);
 						off[cell] = cur[cell] = 0;
 						continue;
 					}
-					
+
 					Freezing.freeze(cell);
-					
+
 					off[cell] = cur[cell] - 1;
 					volume += off[cell];
 				} else {
@@ -64,7 +64,7 @@ public class Freezing extends Blob {
 			}
 		}
 	}
-	
+
 	public static void freeze( int cell ){
 		Char ch = Actor.findChar( cell );
 		if (ch != null && !ch.isImmune(Freezing.class)) {
@@ -88,26 +88,52 @@ public class Freezing extends Blob {
 				}
 			}
 		}
-		
+
 		Heap heap = Dungeon.level.heaps.get( cell );
 		if (heap != null) heap.freeze();
 	}
-	
+
 	@Override
 	public void use( BlobEmitter emitter ) {
 		super.use( emitter );
 		emitter.start( SnowParticle.FACTORY, 0.05f, 0 );
 	}
-	
+
 	@Override
 	public String tileDesc() {
 		return Messages.get(this, "desc");
 	}
-	
+
 	//legacy functionality from before this was a proper blob. Returns true if this cell is visible
 	public static boolean affect( int cell ) {
-		
-		Char ch = Actor.findChar( cell );
+		affectChar(cell);
+
+		clearFireIfPresent(cell);
+		clearEternalFireIfPresent(cell);
+
+		freezeHeapIfPresent(cell);
+
+		return emitSnowParticleIfInHeroFOV(cell);
+	}
+
+	private static boolean emitSnowParticleIfInHeroFOV(int cell) {
+		if (Dungeon.level.heroFOV[cell]) {
+			CellEmitter.get(cell).start( SnowParticle.FACTORY, 0.2f, 6 );
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	private static void freezeHeapIfPresent(int cell) {
+		Heap heap = Dungeon.level.heaps.get(cell);
+		if (heap != null) {
+			heap.freeze();
+		}
+	}
+
+	private static void affectChar(int cell) {
+		Char ch = Actor.findChar(cell);
 		if (ch != null) {
 			if (Dungeon.level.water[ch.pos]){
 				Buff.prolong(ch, Frost.class, Frost.DURATION * 3);
@@ -115,27 +141,19 @@ public class Freezing extends Blob {
 				Buff.prolong(ch, Frost.class, Frost.DURATION);
 			}
 		}
+	}
 
-		Fire fire = (Fire) Dungeon.level.blobs.get(Fire.class);
-		if (fire != null && fire.volume > 0) {
-			fire.clear( cell );
-		}
-
+	private static void clearEternalFireIfPresent(int cell) {
 		MagicalFireRoom.EternalFire eternalFire = (MagicalFireRoom.EternalFire)Dungeon.level.blobs.get(MagicalFireRoom.EternalFire.class);
 		if (eternalFire != null && eternalFire.volume > 0) {
-			eternalFire.clear( cell );
+			eternalFire.clear(cell);
 		}
-		
-		Heap heap = Dungeon.level.heaps.get( cell );
-		if (heap != null) {
-			heap.freeze();
-		}
-		
-		if (Dungeon.level.heroFOV[cell]) {
-			CellEmitter.get( cell ).start( SnowParticle.FACTORY, 0.2f, 6 );
-			return true;
-		} else {
-			return false;
+	}
+
+	private static void clearFireIfPresent(int cell) {
+		Fire fire = (Fire) Dungeon.level.blobs.get(Fire.class);
+		if (fire != null && fire.volume > 0) {
+			fire.clear(cell);
 		}
 	}
 }
