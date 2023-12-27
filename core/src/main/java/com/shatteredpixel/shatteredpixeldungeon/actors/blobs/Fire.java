@@ -49,22 +49,36 @@ public class Fire extends Blob {
 		for (int i = area.left-1; i <= area.right; i++) {
 			for (int j = area.top-1; j <= area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
-				if (cur[cell] > 0) {
+				if (hasFire(cell)) {
 					if (FireFreezeInteraction(freeze, cell))
 						continue;
 					burn( cell );
-					fire = cur[cell] - 1;
-					if (isFireExtinguished(fire, flamable[cell]))
-						observe = handleFireExtinguished(cell);
+					fire = decreaseFire(cell);
+					if (isBurnedOutAndCombustible(fire, flamable[cell]))
+						observe = burnDownAndUpdateMap(cell);
 				} else if (flamable[cell] && noFreeze(freeze, cell) && hasBurningNeighbor(flamable, cell)) {
 					fire = getFireFromNeighbor(cell, i, j);
 				} else {
 					fire = 0;
 				}
-				volume += (off[cell] = fire);
+				updateVolume(cell, fire);
 			}
 		}
 		if (observe) Dungeon.observe();
+	}
+
+	private void updateVolume(int cell, int fire) {
+		volume += (off[cell] = fire);
+	}
+
+	private int decreaseFire(int cell) {
+		int fire;
+		fire = cur[cell] - 1;
+		return fire;
+	}
+
+	private boolean hasFire(int cell) {
+		return cur[cell] > 0;
 	}
 
 	private int getFireFromNeighbor(int cell, int i, int j) {
@@ -75,7 +89,7 @@ public class Fire extends Blob {
 		return fire;
 	}
 
-	private boolean isFireExtinguished(int fire, boolean flamable) {
+	private boolean isBurnedOutAndCombustible(int fire, boolean flamable) {
 		return fire <= 0 && flamable;
 	}
 
@@ -84,13 +98,13 @@ public class Fire extends Blob {
 	}
 
 	private boolean hasBurningNeighbor(boolean[] flamable, int cell) {
-		return  (cur[cell - 1] > 0
-				|| cur[cell + 1] > 0
-				|| cur[cell - Dungeon.level.width()] > 0
-				|| cur[cell + Dungeon.level.width()] > 0);
+		return  (hasFire(cell - 1)
+				|| hasFire(cell + 1)
+				|| hasFire(cell - Dungeon.level.width())
+				|| hasFire(cell + Dungeon.level.width()));
 	}
 
-	private boolean handleFireExtinguished(int cell) {
+	private boolean burnDownAndUpdateMap(int cell) {
 		Dungeon.level.destroy(cell);
 		GameScene.updateMap(cell);
 		return true;
