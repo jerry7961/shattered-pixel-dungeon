@@ -150,4 +150,3 @@ public class Electricity extends Blob {
 	}
 	
 }
-
