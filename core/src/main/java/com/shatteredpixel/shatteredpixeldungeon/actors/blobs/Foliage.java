@@ -45,24 +45,36 @@ public class Foliage extends Blob {
 		for (int i = area.left; i < area.right; i++) {
 			for (int j = area.top; j < area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
-				if (cur[cell] > 0) {
+				if (hasFoliage(cell)) {
 
-					off[cell] = cur[cell];
-					volume += off[cell];
+					preserveFoliage(cell);
+					updateVolume(cell);
 
-					if (map[cell] == Terrain.EMBERS) {
-						map[cell] = Terrain.GRASS;
-						GameScene.updateMap(cell);
+					if (terrainIsEmbers(map[cell])) {
+						setTerrainToGrass(map, cell);
+						updateMap(cell);
 					}
 
-					seen = seen || Dungeon.level.visited[cell];
+					seen = checkCellAndMarkSeen(seen, cell);
 
 				} else {
-					off[cell] = 0;
+					setFoliageToZero(cell);
 				}
 			}
 		}
-		
+
+		addBuffWhenInFoliage();
+
+		if (seen) {
+			addGardenLandmark();
+		}
+	}
+
+	private void addGardenLandmark() {
+		Notes.add( Notes.Landmark.GARDEN );
+	}
+
+	private void addBuffWhenInFoliage() {
 		Hero hero = Dungeon.hero;
 		if (hero.isAlive() && cur[hero.pos] > 0) {
 			Shadows s = Buff.affect( hero, Shadows.class );
@@ -70,12 +82,41 @@ public class Foliage extends Blob {
 				s.prolong();
 			}
 		}
-
-		if (seen) {
-			Notes.add( Notes.Landmark.GARDEN );
-		}
 	}
-	
+
+	private void setFoliageToZero(int cell) {
+		off[cell] = 0;
+	}
+
+	private boolean checkCellAndMarkSeen(boolean seen, int cell) {
+		seen = seen || Dungeon.level.visited[cell];
+		return seen;
+	}
+
+	private void updateMap(int cell) {
+		GameScene.updateMap(cell);
+	}
+
+	private void setTerrainToGrass(int[] map, int cell) {
+		map[cell] = Terrain.GRASS;
+	}
+
+	private boolean terrainIsEmbers(int map) {
+		return map == Terrain.EMBERS;
+	}
+
+	private void preserveFoliage(int cell) {
+		off[cell] = cur[cell];
+	}
+
+	private boolean hasFoliage(int cell) {
+		return cur[cell] > 0;
+	}
+
+	private void updateVolume(int cell) {
+		volume += off[cell];
+	}
+
 	@Override
 	public void use( BlobEmitter emitter ) {
 		super.use( emitter );
