@@ -56,23 +56,23 @@ public class Electricity extends Blob {
 		for (int i = area.left-1; i <= area.right; i++) {
 			for (int j = area.top-1; j <= area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
-				if (isEnergyPositive(cell)) {
+				if (hasElectricity(cell)) {
 					affectCharWithElectricShock(cell);
 					chargeItemInHeap(cell);
-					decreaseCellEnergy(cell);
+					decreaseElectricity(cell);
 					updateVolume(cell);
 				} else {
-					setEnergyToZero(cell);
+					setElectricityToZero(cell);
 				}
 			}
 		}
 	}
 
-	private boolean isEnergyPositive(int cell) {
+	private boolean hasElectricity(int cell) {
 		return cur[cell] > 0;
 	}
 
-	private void setEnergyToZero(int cell) {
+	private void setElectricityToZero(int cell) {
 		off[cell] = 0;
 	}
 
@@ -80,7 +80,7 @@ public class Electricity extends Blob {
 		volume += off[cell];
 	}
 
-	private void decreaseCellEnergy(int cell) {
+	private void decreaseElectricity(int cell) {
 		off[cell] = cur[cell] - 1;
 	}
 
@@ -118,7 +118,7 @@ public class Electricity extends Blob {
 			for (int j = area.top-1; j <= area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
 
-				if (isEnergyPositive(cell)) {
+				if (hasElectricity(cell)) {
 					spreadFromCell(cell, cur[cell]);
 				}
 			}
