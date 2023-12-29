@@ -43,35 +43,74 @@ public class Regrowth extends Blob {
 			for (int i = area.left; i < area.right; i++) {
 				for (int j = area.top; j < area.bottom; j++) {
 					cell = i + j*Dungeon.level.width();
-					if (off[cell] > 0) {
-						int c = Dungeon.level.map[cell];
-						int c1 = c;
-						if (c == Terrain.EMPTY || c == Terrain.EMBERS || c == Terrain.EMPTY_DECO) {
-							c1 = (cur[cell] > 9 && Actor.findChar( cell ) == null)
-									? Terrain.HIGH_GRASS : Terrain.GRASS;
-						} else if ((c == Terrain.GRASS || c == Terrain.FURROWED_GRASS)
-								&& cur[cell] > 9 && Dungeon.level.plants.get(cell) == null && Actor.findChar( cell ) == null ) {
-							c1 = Terrain.HIGH_GRASS;
-						}
-
-						if (c1 != c) {
-							Level.set( cell, c1 );
-							GameScene.updateMap( cell );
-						}
-
-						Char ch = Actor.findChar( cell );
-						if (ch != null
-								&& !ch.isImmune(this.getClass())
-								&& off[cell] > 1) {
-							Buff.prolong( ch, Roots.class, TICK );
-						}
-					}
+					if (needTerrainChange(cell))
+						changeTerrainByConditions(cell);
 				}
 			}
 			Dungeon.observe();
 		}
 	}
-	
+
+	private void changeTerrainByConditions(int cell) {
+		int c = Dungeon.level.map[cell];
+		int c1 = c;
+		if (allowsGrassGrowth(c)) {
+			c1 = GrassGrowth(cell);
+		} else if (canUpgradeToHighGrass(c, cell)) {
+			c1 = UpgradeToHighGrass();
+		}
+
+		if (isTerrainChanged(c1, c)) {
+			updateMap(cell, c1);
+		}
+
+		addDebuffIfMeetTheConditions(cell);
+	}
+
+	private void addDebuffIfMeetTheConditions(int cell) {
+		Char ch = Actor.findChar(cell);
+		if (ch != null
+				&& !ch.isImmune(this.getClass())
+				&& off[cell] > 1) {
+			Buff.prolong( ch, Roots.class, TICK );
+		}
+	}
+
+	private void updateMap(int cell, int c1) {
+		Level.set(cell, c1);
+		GameScene.updateMap(cell);
+	}
+
+	private boolean isTerrainChanged(int c1, int c) {
+		return c1 != c;
+	}
+
+	private int UpgradeToHighGrass() {
+		int c1;
+		c1 = Terrain.HIGH_GRASS;
+		return c1;
+	}
+
+	private boolean canUpgradeToHighGrass(int c, int cell) {
+		return (c == Terrain.GRASS || c == Terrain.FURROWED_GRASS)
+				&& cur[cell] > 9 && Dungeon.level.plants.get(cell) == null && Actor.findChar(cell) == null;
+	}
+
+	private int GrassGrowth(int cell) {
+		int c1;
+		c1 = (cur[cell] > 9 && Actor.findChar(cell) == null)
+				? Terrain.HIGH_GRASS : Terrain.GRASS;
+		return c1;
+	}
+
+	private boolean allowsGrassGrowth(int c) {
+		return c == Terrain.EMPTY || c == Terrain.EMBERS || c == Terrain.EMPTY_DECO;
+	}
+
+	private boolean needTerrainChange(int cell) {
+		return off[cell] > 0;
+	}
+
 	@Override
 	public void use( BlobEmitter emitter ) {
 		super.use( emitter );
