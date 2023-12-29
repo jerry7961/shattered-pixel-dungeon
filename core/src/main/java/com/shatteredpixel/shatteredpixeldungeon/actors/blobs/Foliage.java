@@ -58,7 +58,7 @@ public class Foliage extends Blob {
 					seen = checkCellAndMarkSeen(seen, cell);
 
 				} else {
-					setFoliageToZero(cell);
+					resetFoliage(cell);
 				}
 			}
 		}
@@ -84,7 +84,7 @@ public class Foliage extends Blob {
 		}
 	}
 
-	private void setFoliageToZero(int cell) {
+	private void resetFoliage(int cell) {
 		off[cell] = 0;
 	}
 
