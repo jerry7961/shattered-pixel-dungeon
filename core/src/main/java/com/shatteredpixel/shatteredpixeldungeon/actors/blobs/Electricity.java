@@ -62,7 +62,7 @@ public class Electricity extends Blob {
 					decreaseElectricity(cell);
 					updateVolume(cell);
 				} else {
-					setElectricityToZero(cell);
+					resetElectricity(cell);
 				}
 			}
 		}
@@ -72,7 +72,7 @@ public class Electricity extends Blob {
 		return cur[cell] > 0;
 	}
 
-	private void setElectricityToZero(int cell) {
+	private void resetElectricity(int cell) {
 		off[cell] = 0;
 	}
 
