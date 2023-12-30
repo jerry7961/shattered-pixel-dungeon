@@ -35,62 +35,109 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.special.MagicalFire
 import com.shatteredpixel.shatteredpixeldungeon.messages.Messages;
 
 public class Freezing extends Blob {
-
+	
 	@Override
 	protected void evolve() {
-
+		
 		int cell;
-
+		
 		Fire fire = (Fire)Dungeon.level.blobs.get( Fire.class );
-
+		
 		for (int i = area.left-1; i <= area.right; i++) {
 			for (int j = area.top-1; j <= area.bottom; j++) {
 				cell = i + j*Dungeon.level.width();
-				if (cur[cell] > 0) {
+				if (hasIce(cell)) {
 
-					if (fire != null && fire.volume > 0 && fire.cur[cell] > 0){
-						fire.clear(cell);
-						off[cell] = cur[cell] = 0;
+					if (FireFreezeInteraction(fire, cell))
 						continue;
-					}
 
 					Freezing.freeze(cell);
 
-					off[cell] = cur[cell] - 1;
-					volume += off[cell];
+					decreaseIce(cell);
+					updateVolume(cell);
 				} else {
-					off[cell] = 0;
+					resetFreezing(cell);
 				}
 			}
 		}
 	}
 
+	private void resetFreezing(int cell) {
+		off[cell] = 0;
+	}
+
+	private void decreaseIce(int cell) {
+		off[cell] = cur[cell] - 1;
+	}
+
+	private boolean FireFreezeInteraction(Fire fire, int cell) {
+		if (fire != null && fire.volume > 0 && fire.cur[cell] > 0){
+			fire.clear(cell);
+			off[cell] = cur[cell] = 0;
+			return true;
+		}
+		return false;
+	}
+
+	private boolean hasIce(int cell) {
+		return cur[cell] > 0;
+	}
+
+	private void updateVolume(int cell) {
+		volume += off[cell];
+	}
+
 	public static void freeze( int cell ){
 		Char ch = Actor.findChar( cell );
-		if (ch != null && !ch.isImmune(Freezing.class)) {
-			if (ch.buff(Frost.class) != null){
-				Buff.affect(ch, Frost.class, 2f);
+		if (charNotImmune(ch)) {
+			if (hasFrostBuff(ch)){
+				extendFrostBuffDuration(ch);
 			} else {
 				Chill chill = ch.buff(Chill.class);
 				float turnsToAdd = Dungeon.level.water[cell] ? 5f : 3f;
-				if (chill != null){
-					float chillToCap = Chill.DURATION - chill.cooldown();
-					chillToCap /= ch.resist(Chill.class); //account for resistance to chill
-					turnsToAdd = Math.min(turnsToAdd, chillToCap);
-				}
-				if (turnsToAdd > 0f) {
-					Buff.affect(ch, Chill.class, turnsToAdd);
-				}
-				if (chill != null
-						&& chill.cooldown() >= Chill.DURATION &&
-						!ch.isImmune(Frost.class)){
-					Buff.affect(ch, Frost.class, Frost.DURATION);
-				}
+				turnsToAdd = getTurnsToAdd(chill, ch, turnsToAdd);
+				addChillBuffIfTurnsRemaining(turnsToAdd, ch);
+				upgradeChillToFrostIfCooledDown(chill, ch);
 			}
 		}
-
+		
 		Heap heap = Dungeon.level.heaps.get( cell );
 		if (heap != null) heap.freeze();
+	}
+
+	private static void upgradeChillToFrostIfCooledDown(Chill chill, Char ch) {
+		if (chill != null
+				&& chill.cooldown() >= Chill.DURATION &&
+				!ch.isImmune(Frost.class)){
+			Buff.affect(ch, Frost.class, Frost.DURATION);
+		}
+	}
+
+	private static void addChillBuffIfTurnsRemaining(float turnsToAdd, Char ch) {
+		if (turnsToAdd > 0f) {
+			Buff.affect(ch, Chill.class, turnsToAdd);
+		}
+	}
+
+	private static float getTurnsToAdd(Chill chill, Char ch, float turnsToAdd) {
+		if (chill != null){
+			float chillToCap = Chill.DURATION - chill.cooldown();
+			chillToCap /= ch.resist(Chill.class); //account for resistance to chill
+			turnsToAdd = Math.min(turnsToAdd, chillToCap);
+		}
+		return turnsToAdd;
+	}
+
+	private static void extendFrostBuffDuration(Char ch) {
+		Buff.affect(ch, Frost.class, 2f);
+	}
+
+	private static boolean hasFrostBuff(Char ch) {
+		return ch.buff(Frost.class) != null;
+	}
+
+	private static boolean charNotImmune(Char ch) {
+		return ch != null && !ch.isImmune(Freezing.class);
 	}
 
 	@Override
@@ -98,14 +145,15 @@ public class Freezing extends Blob {
 		super.use( emitter );
 		emitter.start( SnowParticle.FACTORY, 0.05f, 0 );
 	}
-
+	
 	@Override
 	public String tileDesc() {
 		return Messages.get(this, "desc");
 	}
-
+	
 	//legacy functionality from before this was a proper blob. Returns true if this cell is visible
 	public static boolean affect( int cell ) {
+
 		affectChar(cell);
 
 		clearFireIfPresent(cell);
@@ -157,3 +205,4 @@ public class Freezing extends Blob {
 		}
 	}
 }
+
